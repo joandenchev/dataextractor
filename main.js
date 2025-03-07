@@ -1,6 +1,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import fs from 'fs'
+import {data} from './format.js'
 
 
 export class settlementRecord{
@@ -74,6 +75,7 @@ async function process1(){
         return settlements
     }
 }
+
 async function process2() {
     const url = 'https://www.ekatte.com/селищни-образувания'
     const res = await axios.get(url)
@@ -84,21 +86,83 @@ async function process2() {
     const names = []
     for (let i = 0; i < 6; i++) { names.push(listSO.shift()) }
 
-    const listFSO = []
+    const listFSO = [] // GOTOVATA REDAKTIRANA TABLICA
     let nextRecord
 
     for (let i = 0; i < listSO.length; i++) {
         let n = i%6
         n===0 && (nextRecord = {})
+
         if(n===5) {
             listFSO.push(nextRecord)
-        } else if(n===4) {
+        }
+        else if(n===4) {
             if(/\w+/.test(listSO[i])){
                 nextRecord[(names[n] + ' 2')] = listSO[i]
             }
-        } else {
+        }
+        else {
             nextRecord[names[n]] = listSO[i]
         }
     }
-    console.table(listFSO)
+
+    const finalList = {
+        'sonz':[],
+        'somz': []
+    }
+
+    for (const el of listFSO) {
+        const zemlishte = el['Землище']
+        const thisObshtina = /общ\. .+,/g.exec(zemlishte)[0].slice(5, -1)
+        const thisOblast = /обл\. .+/g.exec(zemlishte)[0].slice(5)
+        const r = new settlementRecord(
+            el['Наименование'],
+            'с.о.',
+            thisOblast,
+            thisObshtina,
+        )
+        if (/(курорт)|(комплекс)|(зона)/i.test(r.name)) {
+            if (el['Вид'] === '1') {
+                finalList.sonz.push(r)
+            } else {
+                finalList.somz.push(r)
+            }
+        }
+    }
+
+    //console.table(listFSO)
+    //console.table(finalList.sonz)
+    //console.table(finalList.somz)
+
+    for (const el of finalList.sonz) {
+        el.name=el.name.slice(19, -1)
+        addEl((el.type='к.к.', el))
+    }
+    addEl(new settlementRecord('Сливенски минерални бани', 'к.', 'Сливен', 'Сливен'))
+    addEl(new settlementRecord('Огняновски минерални бани', 'к.', 'Благоевград', 'Гърмен'))
+
+    function addEl(el) {
+        data.push(el)
+    }
+
+    console.table(data.sort((a, b) => a.name.localeCompare(b.name)))
+    fs.writeFileSync('settlements.json', JSON.stringify(data))
+    checkForDuplicates(data)
+}
+
+function checkForDuplicates(arr) {
+    console.warn('CHECKING FOR DUPLICATES!\n')
+    let seen = new Set();
+    let duplicates = [];
+
+    arr.forEach(obj => {
+        const objStr = JSON.stringify(obj);
+        if (seen.has(objStr)) {
+            duplicates.push(obj);
+        } else {
+            seen.add(objStr);
+        }
+    });
+
+    console.log(duplicates);
 }
