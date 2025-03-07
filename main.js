@@ -79,8 +79,25 @@ async function process2() {
     const res = await axios.get(url)
     const page = cheerio.load(res.data)
 
-    const others = page('tbody > tr').text()
-    const formatted = others.split(/\s\n[^(]*\(.*\)\s/)
-    //console.log(others)
-    console.log(formatted.length)
+    const listSO = page('tbody > tr').text().trim().split('\n')
+
+    const names = []
+    for (let i = 0; i < 6; i++) { names.push(listSO.shift()) }
+    const listFSO = []
+
+    //names.unshift(names.pop())
+    let nextRecord
+
+    for (let i = 0; i < listSO.length; i++) {
+        let n = i%6
+        n===0 && (nextRecord = {})
+        n===5  ? listFSO.push(nextRecord) : (
+            n!==4 ? nextRecord[names[n]] = listSO[i] : (
+                /\^s+/.test(listSO[i]) && (nextRecord[names[n] + ' 2'] = listSO[i])
+            )
+        )
+
+    }
+
+    console.log(listFSO)
 }
