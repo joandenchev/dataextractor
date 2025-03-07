@@ -83,21 +83,22 @@ async function process2() {
 
     const names = []
     for (let i = 0; i < 6; i++) { names.push(listSO.shift()) }
-    const listFSO = []
 
-    //names.unshift(names.pop())
+    const listFSO = []
     let nextRecord
 
     for (let i = 0; i < listSO.length; i++) {
         let n = i%6
         n===0 && (nextRecord = {})
-        n===5  ? listFSO.push(nextRecord) : (
-            n!==4 ? nextRecord[names[n]] = listSO[i] : (
-                /\^s+/.test(listSO[i]) && (nextRecord[names[n] + ' 2'] = listSO[i])
-            )
-        )
-
+        if(n===5) {
+            listFSO.push(nextRecord)
+        } else if(n===4) {
+            if(/\w+/.test(listSO[i])){
+                nextRecord[(names[n] + ' 2')] = listSO[i]
+            }
+        } else {
+            nextRecord[names[n]] = listSO[i]
+        }
     }
-
-    console.log(listFSO)
+    console.table(listFSO)
 }
